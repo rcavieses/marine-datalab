@@ -230,6 +230,13 @@ header.top .wrap{max-width:1340px}
 .about .logo-big{max-width:360px;width:100%;filter:var(--logo-filter);justify-self:center}
 .about-copy{display:grid;gap:18px}
 .about-copy p{color:var(--muted)}
+.founder{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:6px}
+.founder img{width:96px;height:96px;border-radius:50%;object-fit:cover;display:block;border:3px solid var(--teal-soft)}
+.founder div{display:grid;gap:4px}
+.founder b{font:800 1.05rem/1.2 var(--display);color:var(--ink)}
+.founder .role{font:600 .72rem/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+.founder p{font-size:.92rem}
+@media (max-width:420px){.founder{grid-template-columns:1fr;justify-items:start}}
 .creds{display:grid;gap:10px;margin:6px 0 0;padding:0;list-style:none}
 .creds li{padding-left:18px;position:relative}
 .creds li::before{content:"";position:absolute;left:0;top:.7em;width:8px;height:2px;background:var(--buoy)}
@@ -586,12 +593,21 @@ footer .flogo{height:76px;width:auto;filter:var(--logo-filter)}
       <p class="eyebrow">Quiénes somos</p>
       <h2>Ciencia marina con ingeniería de datos</h2>
       <p>Marine DataLab nace en La Paz, Baja California Sur, para acercar la investigación oceanográfica al sector productivo. Trabajamos con quienes cultivan y pescan en el Golfo de California y el Pacífico mexicano.</p>
+      <p>Hoy operamos entre La Paz y Hoting, Suecia, combinando el trabajo de campo en el Pacífico mexicano con colaboración internacional.</p>
       <ul class="creds">
         <li>Formación doctoral en ciencias marinas y costeras</li>
         <li>Experiencia en oceanografía satelital, modelos de ecosistema (Atlantis) y aprendizaje profundo para pesquerías</li>
         <li>Desarrollo de plataformas en la nube, bases de conocimiento con IA y tableros interactivos</li>
         <li>Colaboración con organizaciones de conservación, academia y cooperativas pesqueras</li>
       </ul>
+      <div class="founder">
+        <img src="img/ricardo-cavieses.webp" width="201" height="201" loading="lazy" alt="Ricardo Cavieses, fundador de Marine DataLab">
+        <div>
+          <b>Ricardo Cavieses</b>
+          <span class="role">Fundador</span>
+          <p>Investigador en ciencias marinas que une oceanografía satelital, modelación de ecosistemas e inteligencia artificial para resolver problemas reales de la pesca y la acuicultura.</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -856,6 +872,10 @@ footer .flogo{height:76px;width:auto;filter:var(--logo-filter)}
 "Preparar mensaje":["Prepare message","Förbered meddelande"],
 "La Paz, B.C.S., México · Hoting, Suecia":["La Paz, B.C.S., Mexico · Hoting, Sweden","La Paz, B.C.S., Mexiko · Hoting, Sverige"],
 "Hoting, Suecia":["Hoting, Sweden","Hoting, Sverige"],
+"Hoy operamos entre La Paz y Hoting, Suecia, combinando el trabajo de campo en el Pacífico mexicano con colaboración internacional.":["Today we operate between La Paz and Hoting, Sweden, combining fieldwork in the Mexican Pacific with international collaboration.","I dag verkar vi mellan La Paz och Hoting i Sverige och kombinerar fältarbete i mexikanska Stilla havet med internationellt samarbete."],
+"Fundador":["Founder","Grundare"],
+"Investigador en ciencias marinas que une oceanografía satelital, modelación de ecosistemas e inteligencia artificial para resolver problemas reales de la pesca y la acuicultura.":["Marine scientist bringing together satellite oceanography, ecosystem modelling and artificial intelligence to solve real problems in fisheries and aquaculture.","Havsforskare som förenar satellitoceanografi, ekosystemmodellering och artificiell intelligens för att lösa verkliga problem inom fiske och vattenbruk."],
+"Ricardo Cavieses, fundador de Marine DataLab":["Ricardo Cavieses, founder of Marine DataLab","Ricardo Cavieses, grundare av Marine DataLab"],
 /* textos dinámicos */
 "CRÍTICO":["CRITICAL","KRITISK"],
 "ATENCIÓN":["WARNING","VARNING"],
