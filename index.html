@@ -106,6 +106,16 @@ header.top .wrap{max-width:1340px}
 .tags{display:flex;flex-wrap:wrap;gap:8px}
 .tags span{font:500 .8rem/1 var(--mono);border:1px solid var(--line);padding:7px 10px;border-radius:4px;color:var(--muted)}
 
+/* indicador de scroll */
+.scroll-cue{position:fixed;z-index:40;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:var(--muted);font:500 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;transition:opacity .4s,visibility .4s}
+.scroll-cue:hover{color:var(--teal)}
+.scroll-cue span{background:var(--surface);padding:5px 9px;border-radius:99px;box-shadow:0 4px 14px -6px rgba(10,60,70,.35)}
+.scroll-cue i{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--surface);color:var(--teal);border:1.5px solid var(--teal);box-shadow:0 6px 18px -8px rgba(10,60,70,.45);animation:cue 1.8s ease-in-out infinite}
+.scroll-cue svg{width:18px;height:18px}
+.scroll-cue.gone{opacity:0;visibility:hidden}
+@keyframes cue{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
+@media (prefers-reduced-motion:reduce){.scroll-cue i{animation:none}}
+@media (max-height:520px){.scroll-cue{display:none}}
 /* console */
 .console{background:var(--panel);color:var(--panel-ink);border-radius:18px;padding:20px;box-shadow:0 24px 50px -28px rgba(10,90,100,.35);border:1px solid var(--panel-line);font-family:var(--mono)}
 .console-top{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.78rem;color:var(--panel-dim);padding-bottom:14px;border-bottom:1px solid var(--panel-line)}
@@ -342,6 +352,7 @@ footer .flogo{height:76px;width:auto;filter:var(--logo-filter)}
       <div class="console-foot"><span>Nodo MDL-B2 · LoRaWAN · batería 92 %</span><span id="clock">actualizado hace 0 s</span></div>
     </div>
   </div>
+  <a class="scroll-cue" href="#como-funciona" aria-label="Desliza para conocer más"><span>Desliza</span><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></i></a>
 </section>
 
 <div class="strip">
@@ -646,6 +657,8 @@ footer .flogo{height:76px;width:auto;filter:var(--logo-filter)}
 "cada minuto.":["every minute.","varje minut."],
 "Diseñamos sensores, redes IoT y modelos de inteligencia artificial para granjas de peces y moluscos, embarcaciones y cadenas de suministro pesqueras. Datos confiables para decidir antes de que el oxígeno caiga o el producto pierda su origen.":["We design sensors, IoT networks and artificial intelligence models for fish and shellfish farms, fishing vessels and seafood supply chains. Reliable data to act before oxygen drops or a product loses its origin.","Vi utvecklar sensorer, IoT-nätverk och AI-modeller för fisk- och skaldjursodlingar, fiskefartyg och leveranskedjor för sjömat. Pålitliga data så att du kan agera innan syrehalten sjunker eller produkten tappar sitt ursprung."],
 "Ver dashboards":["See dashboards","Se dashboards"],
+"Desliza":["Scroll","Scrolla"],
+"Desliza para conocer más":["Scroll to learn more","Scrolla för att läsa mer"],
 "Acuicultura intensiva":["Intensive aquaculture","Intensivt vattenbruk"],
 "Pesquerías 2.0":["Fisheries 2.0","Fiske 2.0"],
 "Trazabilidad":["Traceability","Spårbarhet"],
@@ -951,6 +964,11 @@ footer .flogo{height:76px;width:auto;filter:var(--logo-filter)}
     out.hidden=false; out.textContent=txt+'\n\n'+MAILNOTE[lang][0];
     navigator.clipboard?.writeText(txt).then(()=>{out.textContent=txt+'\n\n'+MAILNOTE[lang][1];}).catch(()=>{});
   });
+
+  /* ---------- Indicador de scroll ---------- */
+  const cue=document.querySelector('.scroll-cue');
+  const cueCheck=()=>cue.classList.toggle('gone',scrollY>80);
+  addEventListener('scroll',cueCheck,{passive:true});cueCheck();
 
   /* ---------- Cambio de idioma ---------- */
   function applyLang(l){
