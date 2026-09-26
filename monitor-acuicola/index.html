@@ -1,0 +1,586 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marine DataLab — Monitor acuícola en tiempo real</title>
+<meta name="description" content="Demo de Marine DataLab: monitoreo en tiempo real de calidad de agua en tanques de cultivo, con alertas, control de aireadores, pronóstico de oxígeno y bitácora.">
+<link rel="icon" href="../favicon/favicon.ico" sizes="any">
+<link rel="icon" href="../favicon/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../favicon/favicon-180.png">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef3f4;--panel:#fff;--ink:#0d2530;--soft:#557079;--line:#d6e3e6;
+  --brand:#0e7c8f;--brand-d:#0a5461;--brand-l:#e2f2f4;--night:rgba(13,37,48,.06);
+  --good:#2f9e5a;--mid:#d9a02b;--bad:#c74e3d;--off:#7b8a90;
+  --font:"Inter",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a1417;--panel:#11222a;--ink:#e7f1f3;--soft:#93adb4;--line:#1e3740;--brand-l:#0f2e35;--brand:#23a3b8;--night:rgba(255,255,255,.04);}}
+:root[data-theme="dark"]{--bg:#0a1417;--panel:#11222a;--ink:#e7f1f3;--soft:#93adb4;--line:#1e3740;--brand-l:#0f2e35;--brand:#23a3b8;--night:rgba(255,255,255,.04);}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font)}
+button,select,input,textarea{font-family:inherit;color:inherit}
+header{background:#062d38;color:#fff;padding:16px 20px}
+.eyebrow{font:600 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#7fd3df}
+.back{color:#7fd3df;text-decoration:none}.back:hover{text-decoration:underline}
+h1{margin:4px 0 2px;font-size:clamp(18px,2.6vw,24px);letter-spacing:-.01em}
+header p{margin:0;font-size:13px;opacity:.85;max-width:820px}
+.simbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-top:12px;font-size:12px}
+.simbar .clock{font:600 15px var(--mono);color:#fff}
+.simbar .grp{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.simbar .lab{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#7fd3df}
+.hbtn{font:600 11.5px var(--font);background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:6px;padding:4px 9px;cursor:pointer}
+.hbtn.on{background:#fff;color:#062d38;border-color:#fff}
+.hbtn.warn{border-color:#f0b64a}
+.live{display:inline-flex;align-items:center;gap:6px;font:600 11px var(--mono);color:#9ff0c4}
+.live i{width:8px;height:8px;border-radius:50%;background:#3ddc84;box-shadow:0 0 0 0 rgba(61,220,132,.6);animation:pulse 1.6s infinite}
+.live.paused{color:#f0b64a}.live.paused i{background:#f0b64a;animation:none}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(61,220,132,0)}100%{box-shadow:0 0 0 0 rgba(61,220,132,0)}}
+
+main{max-width:1320px;margin:0 auto;padding:16px;display:grid;grid-template-columns:260px minmax(0,1fr) 320px;gap:16px;align-items:start}
+@media(max-width:1180px){main{grid-template-columns:240px minmax(0,1fr)}.col3{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}}
+@media(max-width:760px){main{grid-template-columns:1fr;padding:12px}.col3{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.panel h2{margin:0 0 4px;font-size:15px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sub{margin:0 0 10px;font-size:12.5px;color:var(--soft)}
+
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.summary div{border:1px solid var(--line);border-radius:8px;padding:6px 4px;text-align:center}
+.summary b{display:block;font:700 18px var(--mono)}
+.summary span{font-size:10.5px;color:var(--soft)}
+.tanks{display:flex;flex-direction:column;gap:6px}
+@media(max-width:760px){.tanks{flex-direction:row;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x mandatory}.tank{min-width:200px;scroll-snap-align:start}}
+.tank{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;text-align:left;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:none;cursor:pointer;width:100%}
+.tank:hover,.tank.on{border-color:var(--brand);background:var(--brand-l)}
+.dot{width:10px;height:10px;border-radius:50%;grid-row:span 2}
+.tank .nm{font-weight:600;font-size:13px}
+.tank .sp{font-size:11px;color:var(--soft);grid-column:2}
+.tank .dv{font:600 13px var(--mono);text-align:right}
+.tank .du{font:10px var(--mono);color:var(--soft);text-align:right;grid-column:3}
+
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.head h2{font-size:18px;margin:0}
+.head .meta{font:11.5px var(--mono);color:var(--soft);margin-top:3px}
+.badge{font:700 11px var(--mono);padding:3px 9px;border-radius:20px;color:#fff;white-space:nowrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:9px 10px 6px;text-align:left;background:none;cursor:pointer;position:relative;overflow:hidden}
+.kpi.on{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+.kpi .k{font-size:11px;color:var(--soft);display:flex;justify-content:space-between;gap:4px}
+.kpi .v{font:700 22px var(--mono);margin:2px 0}
+.kpi .v small{font:500 11px var(--mono);color:var(--soft);margin-left:3px}
+.kpi .tr{font:11px var(--mono);color:var(--soft)}
+.kpi canvas{display:block;width:100%;height:26px;margin-top:3px}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--st,transparent)}
+.st{font:700 9.5px var(--mono);padding:1px 6px;border-radius:10px;color:#fff}
+
+.charthead{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-bottom:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:600 12px var(--font);padding:5px 10px;border:0;background:none;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--brand);color:#fff}
+.chartbox{position:relative;height:280px}
+.chartbox canvas{position:absolute;inset:0;width:100%;height:100%}
+.tip{position:absolute;pointer-events:none;background:rgba(4,25,32,.9);color:#e8f7fa;font:11px var(--mono);padding:6px 8px;border-radius:7px;white-space:nowrap;display:none;z-index:2}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:11.5px;color:var(--soft)}
+.legend i{display:inline-block;width:14px;height:3px;margin-right:5px;vertical-align:3px;border-radius:2px}
+.fc{margin-top:10px;padding:10px 12px;border-radius:9px;font-size:12.8px;line-height:1.45;border-left:4px solid var(--good);background:rgba(47,158,90,.09)}
+.fc.mid{border-color:var(--mid);background:rgba(217,160,43,.12)}
+.fc.bad{border-color:var(--bad);background:rgba(199,78,61,.1)}
+.fc b{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+
+.ctl{display:grid;grid-template-columns:1fr auto;gap:10px 12px;align-items:center;font-size:13px}
+.ctl .d{font-size:11px;color:var(--soft);display:block;margin-top:1px}
+.eq{display:inline-flex;align-items:center;gap:6px}
+.lamp{width:9px;height:9px;border-radius:50%;background:var(--off);flex:none}
+.lamp.on{background:var(--good);box-shadow:0 0 6px var(--good)}
+.lamp.bad{background:var(--bad);box-shadow:0 0 6px var(--bad)}
+.btn{font:600 12px var(--font);padding:6px 11px;border-radius:7px;border:1px solid var(--brand);background:var(--brand);color:#fff;cursor:pointer}
+.btn.ghost{background:none;color:var(--ink);border-color:var(--line)}
+.switch{position:relative;width:40px;height:22px;border-radius:12px;background:var(--line);border:0;cursor:pointer;padding:0}
+.switch:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.switch.on{background:var(--brand)}.switch.on:after{left:21px}
+.node{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.node dt{color:var(--soft)}.node dd{margin:0;font:600 12px var(--mono);text-align:right}
+
+.alerts{display:flex;flex-direction:column;gap:6px;max-height:330px;overflow:auto}
+.al{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;padding:8px 9px;border:1px solid var(--line);border-radius:8px;font-size:12px;align-items:start}
+.al .lv{width:8px;height:8px;border-radius:50%;margin-top:4px}
+.al .tm{font:10.5px var(--mono);color:var(--soft)}
+.al.ack{opacity:.55}
+.al button{font:600 10.5px var(--font);border:1px solid var(--line);background:none;border-radius:6px;padding:2px 7px;cursor:pointer}
+.empty{font-size:12px;color:var(--soft);padding:6px 0}
+.count{font:700 11px var(--mono);background:var(--bad);color:#fff;border-radius:10px;padding:1px 7px}
+
+form.log{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+form.log select,form.log input{font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel);min-width:0}
+form.log input[name=note]{grid-column:1/-1}
+form.log button{grid-column:1/-1}
+.logs{display:flex;flex-direction:column;max-height:260px;overflow:auto}
+.lg{display:grid;grid-template-columns:auto 1fr;gap:0 8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
+.lg:last-child{border-bottom:0}
+.lg .tm{font:10.5px var(--mono);color:var(--soft);grid-row:span 2;padding-top:1px;min-width:78px}
+.lg .ty{font-weight:600}
+.lg .nt{color:var(--soft)}
+
+.toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:20;max-width:min(340px,calc(100vw - 32px))}
+.toast{background:#062d38;color:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:12.5px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;animation:tin .25s ease-out;border-left:4px solid var(--mid)}
+.toast.crit{border-left-color:var(--bad)}.toast.ok{border-left-color:var(--good)}
+.toast .ic{grid-row:span 2;font-size:18px}
+.toast small{font:10.5px var(--mono);color:#7fd3df}
+@keyframes tin{from{transform:translateY(12px);opacity:0}}
+footer{text-align:center;font-size:11px;color:var(--soft);padding:10px 16px 30px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){.live i,.toast{animation:none}}
+</style></head><body>
+<header>
+  <div class="eyebrow" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span><a class="back" href="../#dashboards" data-i="back">← Marine DataLab</a> · Applying AI to Ocean · Demo</span><span id="langs" style="display:flex;gap:4px"></span></div>
+  <h1 data-i="title">Monitor acuícola en tiempo real</h1>
+  <p data-i="intro">Seis tanques de cultivo con nodos de sensores LoRaWAN que reportan cada 5 minutos. Todo lo que ves está simulado con un modelo físico-biológico: ciclo día/noche, fotosíntesis, respiración, aireación y alimentación.</p>
+  <div class="simbar">
+    <span class="live" id="live"><i></i><span id="liveTxt">EN VIVO</span></span>
+    <span class="clock" id="clock">--</span>
+    <span class="grp"><span class="lab" data-i="speed">Velocidad</span><span id="speeds"></span></span>
+    <span class="grp"><span class="lab" data-i="scen">Simular evento</span>
+      <button class="hbtn warn" data-sc="fault" data-i="sFault">Falla de aireador</button>
+      <button class="hbtn warn" data-sc="heat" data-i="sHeat">Ola de calor</button>
+      <button class="hbtn warn" data-sc="offline" data-i="sOff">Nodo sin señal</button>
+      <button class="hbtn" data-sc="reset" data-i="sReset">Restablecer</button></span>
+  </div>
+</header>
+<main>
+<div class="col">
+  <section class="panel">
+    <h2 data-i="farm">Granja · 6 tanques</h2>
+    <p class="sub" data-i="farmS">Oxígeno disuelto actual. Toca un tanque para ver su detalle.</p>
+    <div class="summary" id="summary"></div>
+    <div class="tanks" id="tanks"></div>
+  </section>
+</div>
+<div class="col">
+  <section class="panel">
+    <div class="head">
+      <div><h2 id="tName">—</h2><div class="meta" id="tMeta"></div></div>
+      <span class="badge" id="tBadge"></span>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="charthead">
+      <strong id="cTitle" style="font-size:14px"></strong>
+      <div class="seg" id="ranges"><button data-r="6">6 h</button><button data-r="24" class="on">24 h</button><button data-r="72">72 h</button></div>
+    </div>
+    <div class="chartbox" id="chartbox"><canvas id="chart"></canvas><div class="tip" id="tip"></div></div>
+    <div class="legend" id="legend"></div>
+    <div class="fc" id="fc"></div>
+  </section>
+</div>
+<div class="col col3">
+  <section class="panel">
+    <h2 data-i="ctl">Control remoto</h2>
+    <p class="sub" data-i="ctlS">Los comandos viajan por LoRaWAN al nodo del tanque.</p>
+    <div class="ctl">
+      <div><span class="eq"><i class="lamp" id="aerLamp"></i><b data-i="aer">Aireador</b></span><span class="d" id="aerD"></span></div>
+      <div class="seg" id="aerMode"><button data-m="auto">Auto</button><button data-m="on" data-i="on">On</button><button data-m="off" data-i="off">Off</button></div>
+      <div><span class="eq"><i class="lamp" id="pumpLamp"></i><b data-i="pump">Bomba de recambio</b></span><span class="d" data-i="pumpD">Recambio de agua ~10 %/h</span></div>
+      <button class="switch" id="pump" role="switch" aria-checked="false"><span class="sr" data-i="pump">Bomba</span></button>
+      <div><b data-i="feed">Alimentación</b><span class="d" id="feedD"></span></div>
+      <button class="btn" id="feedNow" data-i="feedNow">Alimentar ahora</button>
+    </div>
+    <dl class="node" id="node"></dl>
+  </section>
+  <section class="panel">
+    <h2><span data-i="alerts">Alertas</span> <span class="count" id="alCount" hidden>0</span></h2>
+    <p class="sub" data-i="alertsS">Umbrales por especie. También llegan como notificación al celular.</p>
+    <div class="alerts" id="alerts"></div>
+  </section>
+  <section class="panel">
+    <h2><span data-i="log">Bitácora de manejo</span> <button class="btn ghost" id="csv" style="padding:4px 9px;font-size:11px">CSV</button></h2>
+    <form class="log" id="logForm">
+      <select name="type" id="logType"></select>
+      <input name="qty" id="logQty" inputmode="decimal" autocomplete="off">
+      <input name="note" id="logNote" autocomplete="off">
+      <button class="btn" type="submit" data-i="add">Registrar</button>
+    </form>
+    <div class="logs" id="logs"></div>
+  </section>
+</div>
+</main>
+<footer><span data-i="foot">Datos simulados con fines de demostración — Marine DataLab</span> · <a href="../#dashboards" style="color:var(--brand)" data-i="more">Ver más dashboards</a></footer>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script>
+/* ============ i18n ============ */
+const T={
+es:{back:"← Marine DataLab",title:"Monitor acuícola en tiempo real",
+ intro:"Seis tanques de cultivo con nodos de sensores LoRaWAN que reportan cada 5 minutos. Todo lo que ves está simulado con un modelo físico-biológico: ciclo día/noche, fotosíntesis, respiración, aireación y alimentación.",
+ live:"EN VIVO",paused:"PAUSA",speed:"Velocidad",scen:"Simular evento",sFault:"Falla de aireador",sHeat:"Ola de calor",sOff:"Nodo sin señal",sReset:"Restablecer",
+ farm:"Granja · 6 tanques",farmS:"Oxígeno disuelto actual. Toca un tanque para ver su detalle.",
+ ok:"Normal",warn:"Atención",crit:"Crítico",offl:"Sin señal",
+ pDO:"Oxígeno disuelto",pT:"Temperatura",pS:"Salinidad",pPH:"pH",pTAN:"Amonio total",
+ last1h:"1 h",cTitle:"{p} · {t}",thrW:"Umbral de atención",thrC:"Umbral crítico",night:"Noche",fcL:"Pronóstico 6 h",aerOn:"Aireador encendido",feedL:"Alimentación",
+ fcT:"Pronóstico IA",fcOk:"Oxígeno estable las próximas 6 h (mínimo previsto {v} mg/L a las {h}). Sin acciones requeridas.",
+ fcMid:"El oxígeno bajará a {v} mg/L hacia las {h}. Conviene dejar el aireador en automático y vigilar la noche.",
+ fcBad:"Riesgo de hipoxia: se prevén {v} mg/L a las {h}. Acción sugerida: {a}.",
+ aOn:"encender aireador ahora",aFix:"revisar el aireador (no responde) y abrir recambio de agua",aPump:"abrir la bomba de recambio",
+ fcOff:"Sin datos recientes del nodo: pronóstico suspendido hasta recuperar la señal.",
+ ctl:"Control remoto",ctlS:"Los comandos viajan por LoRaWAN al nodo del tanque.",aer:"Aireador",on:"On",off:"Off",
+ aerAuto:"Automático: enciende < 5.3 mg/L, apaga > 6.5 mg/L",aerMan:"Manual",aerFault:"⚠ Sin respuesta: consumo eléctrico 0 A",
+ pump:"Bomba de recambio",pumpD:"Recambio de agua ~10 %/h",feed:"Alimentación",feedS:"Programada: {h}",feedNone:"Filtración natural (sin alimento)",feedNow:"Alimentar ahora",
+ nodeId:"Nodo",bat:"Batería",rssi:"Señal (RSSI)",lastPkt:"Último paquete",agoM:"hace {n} min",now:"ahora",
+ alerts:"Alertas",alertsS:"Umbrales por especie. También llegan como notificación al celular.",noAlerts:"Sin alertas registradas.",ack:"Enterado",
+ low:"bajo",high:"alto",back2:"normalizado",nodeLost:"Nodo sin señal",nodeBack:"Nodo reconectado",aerFail:"Aireador sin respuesta",aerAutoOn:"Aireador encendido automáticamente",
+ log:"Bitácora de manejo",add:"Registrar",qty:"Cantidad (kg / ind.)",note:"Nota (opcional)",
+ types:["Alimentación","Observación","Mortalidad","Mantenimiento","Muestreo"],autoFeed:"Alimentación automática",cmd:"Comando",
+ foot:"Datos simulados con fines de demostración — Marine DataLab",more:"Ver más dashboards",
+ heatOn:"Ola de calor activa: +3 °C en toda la granja",faultOn:"Falla simulada en el aireador de {t}",offOn:"El nodo de {t} dejó de transmitir",resetOn:"Escenario restablecido",
+ mode:{auto:"Auto",on:"On",off:"Off"},
+ species:["Camarón blanco · engorda","Camarón blanco · engorda","Ostión japonés · semilla","Totoaba · juveniles","Jurel · juveniles","Pargo · larvicultura"],
+ vol:"m³",dens:"Densidad"},
+en:{back:"← Marine DataLab",title:"Real-time aquaculture monitor",
+ intro:"Six culture tanks with LoRaWAN sensor nodes reporting every 5 minutes. Everything you see is simulated with a physical–biological model: day/night cycle, photosynthesis, respiration, aeration and feeding.",
+ live:"LIVE",paused:"PAUSED",speed:"Speed",scen:"Simulate event",sFault:"Aerator failure",sHeat:"Heat wave",sOff:"Node offline",sReset:"Reset",
+ farm:"Farm · 6 tanks",farmS:"Current dissolved oxygen. Tap a tank to see its detail.",
+ ok:"Normal",warn:"Warning",crit:"Critical",offl:"No signal",
+ pDO:"Dissolved oxygen",pT:"Temperature",pS:"Salinity",pPH:"pH",pTAN:"Total ammonia",
+ last1h:"1 h",cTitle:"{p} · {t}",thrW:"Warning threshold",thrC:"Critical threshold",night:"Night",fcL:"6 h forecast",aerOn:"Aerator on",feedL:"Feeding",
+ fcT:"AI forecast",fcOk:"Oxygen stable for the next 6 h (forecast minimum {v} mg/L at {h}). No action needed.",
+ fcMid:"Oxygen will drop to {v} mg/L around {h}. Keep the aerator on auto and watch the night.",
+ fcBad:"Hypoxia risk: {v} mg/L expected at {h}. Suggested action: {a}.",
+ aOn:"turn the aerator on now",aFix:"check the aerator (not responding) and open water exchange",aPump:"open the exchange pump",
+ fcOff:"No recent data from the node: forecast suspended until the signal returns.",
+ ctl:"Remote control",ctlS:"Commands travel over LoRaWAN to the tank node.",aer:"Aerator",on:"On",off:"Off",
+ aerAuto:"Automatic: on < 5.3 mg/L, off > 6.5 mg/L",aerMan:"Manual",aerFault:"⚠ Not responding: current draw 0 A",
+ pump:"Exchange pump",pumpD:"Water exchange ~10 %/h",feed:"Feeding",feedS:"Scheduled: {h}",feedNone:"Natural filtration (no feed)",feedNow:"Feed now",
+ nodeId:"Node",bat:"Battery",rssi:"Signal (RSSI)",lastPkt:"Last packet",agoM:"{n} min ago",now:"now",
+ alerts:"Alerts",alertsS:"Species-specific thresholds. Also sent as phone notifications.",noAlerts:"No alerts recorded.",ack:"Got it",
+ low:"low",high:"high",back2:"back to normal",nodeLost:"Node offline",nodeBack:"Node reconnected",aerFail:"Aerator not responding",aerAutoOn:"Aerator switched on automatically",
+ log:"Farm log",add:"Add entry",qty:"Amount (kg / ind.)",note:"Note (optional)",
+ types:["Feeding","Observation","Mortality","Maintenance","Sampling"],autoFeed:"Automatic feeding",cmd:"Command",
+ foot:"Simulated data for demonstration purposes — Marine DataLab",more:"See more dashboards",
+ heatOn:"Heat wave active: +3 °C across the farm",faultOn:"Simulated aerator failure in {t}",offOn:"The node in {t} stopped transmitting",resetOn:"Scenario reset",
+ mode:{auto:"Auto",on:"On",off:"Off"},
+ species:["Whiteleg shrimp · grow-out","Whiteleg shrimp · grow-out","Pacific oyster · seed","Totoaba · juveniles","Yellowtail · juveniles","Snapper · larviculture"],
+ vol:"m³",dens:"Density"},
+sv:{back:"← Marine DataLab",title:"Vattenövervakning i realtid",
+ intro:"Sex odlingstankar med LoRaWAN-sensornoder som rapporterar var 5:e minut. Allt du ser simuleras med en fysikalisk-biologisk modell: dygnscykel, fotosyntes, respiration, luftning och utfodring.",
+ live:"LIVE",paused:"PAUS",speed:"Hastighet",scen:"Simulera händelse",sFault:"Luftarfel",sHeat:"Värmebölja",sOff:"Nod utan signal",sReset:"Återställ",
+ farm:"Odling · 6 tankar",farmS:"Aktuellt löst syre. Tryck på en tank för detaljer.",
+ ok:"Normal",warn:"Varning",crit:"Kritisk",offl:"Ingen signal",
+ pDO:"Löst syre",pT:"Temperatur",pS:"Salthalt",pPH:"pH",pTAN:"Total ammonium",
+ last1h:"1 h",cTitle:"{p} · {t}",thrW:"Varningsgräns",thrC:"Kritisk gräns",night:"Natt",fcL:"Prognos 6 h",aerOn:"Luftare på",feedL:"Utfodring",
+ fcT:"AI-prognos",fcOk:"Stabilt syre de närmaste 6 h (prognosminimum {v} mg/L kl. {h}). Ingen åtgärd behövs.",
+ fcMid:"Syret sjunker till {v} mg/L runt {h}. Låt luftaren stå på auto och bevaka natten.",
+ fcBad:"Risk för syrebrist: {v} mg/L väntas kl. {h}. Föreslagen åtgärd: {a}.",
+ aOn:"slå på luftaren nu",aFix:"kontrollera luftaren (svarar inte) och öppna vattenutbytet",aPump:"öppna utbytespumpen",
+ fcOff:"Inga nya data från noden: prognosen pausad tills signalen återkommer.",
+ ctl:"Fjärrstyrning",ctlS:"Kommandon skickas via LoRaWAN till tankens nod.",aer:"Luftare",on:"På",off:"Av",
+ aerAuto:"Automatisk: på < 5,3 mg/L, av > 6,5 mg/L",aerMan:"Manuell",aerFault:"⚠ Svarar inte: strömförbrukning 0 A",
+ pump:"Utbytespump",pumpD:"Vattenutbyte ~10 %/h",feed:"Utfodring",feedS:"Schemalagd: {h}",feedNone:"Naturlig filtrering (ingen foder)",feedNow:"Utfodra nu",
+ nodeId:"Nod",bat:"Batteri",rssi:"Signal (RSSI)",lastPkt:"Senaste paket",agoM:"för {n} min sedan",now:"nu",
+ alerts:"Larm",alertsS:"Artspecifika gränser. Skickas även som mobilnotiser.",noAlerts:"Inga larm registrerade.",ack:"Kvittera",
+ low:"lågt",high:"högt",back2:"normaliserat",nodeLost:"Nod utan signal",nodeBack:"Nod återansluten",aerFail:"Luftaren svarar inte",aerAutoOn:"Luftaren startade automatiskt",
+ log:"Driftlogg",add:"Registrera",qty:"Mängd (kg / st.)",note:"Anteckning (valfri)",
+ types:["Utfodring","Observation","Dödlighet","Underhåll","Provtagning"],autoFeed:"Automatisk utfodring",cmd:"Kommando",
+ foot:"Simulerade data i demonstrationssyfte — Marine DataLab",more:"Se fler dashboards",
+ heatOn:"Värmebölja aktiv: +3 °C i hela odlingen",faultOn:"Simulerat luftarfel i {t}",offOn:"Noden i {t} slutade sända",resetOn:"Scenariot återställt",
+ mode:{auto:"Auto",on:"På",off:"Av"},
+ species:["Vitbent räka · tillväxt","Vitbent räka · tillväxt","Japanskt jätteostron · yngel","Totoaba · juveniler","Gulstjärtsmakrill · juveniler","Snapper · larvodling"],
+ vol:"m³",dens:"Täthet"}};
+let LANG=new URLSearchParams(location.search).get('lang');if(!LANG){try{LANG=localStorage.getItem('mdl-lang')}catch(e){}}if(!LANG)LANG=(navigator.language||'es').slice(0,2);if(!T[LANG])LANG='es';
+const tt=(k,o)=>{let s=T[LANG][k];if(o)for(const x in o)s=s.replace('{'+x+'}',o[x]);return s};
+
+/* ============ modelo ============ */
+const PARAMS=[
+ {k:'DO',n:'pDO',u:'mg/L',d:2,lvl:v=>v<4?2:v<5?1:0,thr:[[5,1],[4,2]]},
+ {k:'T',n:'pT',u:'°C',d:1,lvl:v=>v>30||v<16?2:v>28.5||v<18?1:0,thr:[[28.5,1],[30,2]]},
+ {k:'S',n:'pS',u:'PSU',d:1,lvl:v=>v<28||v>40?2:v<31||v>38?1:0,thr:[[38,1],[40,2]]},
+ {k:'pH',n:'pPH',u:'',d:2,lvl:v=>v<7.4||v>8.8?2:v<7.7||v>8.5?1:0,thr:[[7.7,1],[7.4,2]]},
+ {k:'TAN',n:'pTAN',u:'mg/L',d:2,lvl:v=>v>1?2:v>.5?1:0,thr:[[.5,1],[1,2]]}];
+const PK=Object.fromEntries(PARAMS.map(p=>[p.k,p]));
+// R respiración (mg/L/h), P fotosíntesis pico, Ka eficiencia aireador, ex recambio base (1/h), exc excreción TAN
+const TANKS=[
+ {id:'T-01',vol:120,dens:'85 org/m²',R:.75,P:1.5,Ka:1.2,ex:.02,Tb:26.5,Ta:1.6,exc:.012,feedH:[7,12,17],feedKg:4,node:'MDL-A1',bat:88,rssi:-97},
+ {id:'T-02',vol:120,dens:'110 org/m²',R:.95,P:1.7,Ka:.42,ex:.02,Tb:26.8,Ta:1.7,exc:.016,feedH:[7,12,17],feedKg:5,node:'MDL-A2',bat:81,rssi:-104},
+ {id:'T-03',vol:30,dens:'2.5 M sem.',R:.35,P:.4,Ka:1.0,ex:.35,Tb:24.2,Ta:.8,exc:.002,feedH:[],feedKg:0,node:'MDL-B2',bat:92,rssi:-88,pump:true},
+ {id:'T-04',vol:80,dens:'18 kg/m³',R:.6,P:.25,Ka:1.3,ex:.12,Tb:24.8,Ta:.9,exc:.01,feedH:[8,16],feedKg:3,node:'MDL-C1',bat:74,rssi:-92,pump:true},
+ {id:'T-05',vol:80,dens:'22 kg/m³',R:.7,P:.25,Ka:1.3,ex:.12,Tb:24.6,Ta:.9,exc:.012,feedH:[8,16],feedKg:3.5,node:'MDL-C2',bat:23,rssi:-109,pump:true},
+ {id:'T-06',vol:10,dens:'60 larv/L',R:.3,P:.9,Ka:.9,ex:.05,Tb:27,Ta:.5,exc:.004,feedH:[9,13,18],feedKg:.2,node:'MDL-D1',bat:95,rssi:-85}];
+const STEP=60e3,REC=5,HIST_H=72;
+let heat=0,simT=Math.floor(Date.now()/STEP)*STEP-HIST_H*3600e3,speed=60,paused=false,sel=0,param='DO',range=24,alerts=[],logs=[],prefill=true;
+let rnd=(()=>{let s=20250926;return()=>(s=(s*1664525+1013904223)>>>0)/4294967296})();
+const gauss=()=>{let u=0;for(let i=0;i<6;i++)u+=rnd();return u-3};
+const hourOf=t=>{const d=new Date(t);return d.getHours()+d.getMinutes()/60};
+const light=h=>Math.max(0,Math.sin(Math.PI*(h-6.3)/12.8));
+const sat=(Tc,S)=>(14.62-.3898*Tc+.006969*Tc*Tc-.00005897*Tc*Tc*Tc)*(1-.0053*S);
+
+TANKS.forEach((k,i)=>{k.i=i;k.mode='auto';k.pump=!!k.pump;k.fault=false;k.offline=false;k.aerAuto=false;
+ k.s={DO:6,T:k.Tb,S:35.3,TAN:.15,pH:8,load:0};k.h={t:[],DO:[],T:[],S:[],pH:[],TAN:[],aer:[],feed:[]};k.lvl={};k.last=null;k.miss=0;});
+
+function aerRunning(k){return !k.fault&&(k.mode==='on'||(k.mode==='auto'&&k.aerAuto))}
+function stepTank(k,t,s,det){ // un minuto de simulación
+ const h=hourOf(t),dt=1/60,L=light(h),hv=det?0:heat;
+ const Tenv=k.Tb+hv+k.Ta*Math.sin(2*Math.PI*(h-10)/24);
+ s.T+=(Tenv-s.T)*.25*dt+(det?0:gauss()*.004);
+ const sa=sat(s.T,s.S),q10=Math.pow(1.07,s.T-25),ex=k.ex+(k.pump?.1:0);
+ if(k.mode==='auto'){if(s.DO<5.3)k2(k,s).aer=true;else if(s.DO>6.5)k2(k,s).aer=false;}
+ const aer=!k.fault&&(k.mode==='on'||(k.mode==='auto'&&k2(k,s).aer));
+ const cloud=det?1:.85+.15*Math.sin(t/7.3e6);
+ let dDO=k.P*L*cloud-k.R*q10*(1+.6*s.load)+.08*(sa-s.DO)+(aer?k.Ka*(sa*1.05-s.DO):0)+ex*(sa-s.DO);
+ s.DO=Math.max(.05,Math.min(sa*1.65,s.DO+dDO*dt+(det?0:gauss()*.006)));
+ s.S+=(.018*L*(1+hv*.2)-ex*(s.S-35.2)*.6)*dt;
+ s.TAN+=(k.exc*q10+.06*s.load-(.08+ex)*s.TAN)*dt;s.TAN=Math.max(.01,s.TAN);
+ s.load*=Math.exp(-.35*dt);
+ s.pH=7.98+.075*(s.DO-sa)-.12*s.TAN+(det?0:gauss()*.003);
+ return aer;
+}
+function k2(k,s){return s===k.s?k.aerSt||(k.aerSt={aer:false}):s.aerSt||(s.aerSt={aer:false})}
+
+function feed(k,t,kg,manual){k.s.load+=kg/(k.vol*.05);k.h.feed.push(t);
+ addLog(k.i,t,0,(+kg).toFixed(kg<1?2:1)+' kg','',!manual);}
+
+function tick1(){ // avanza 1 min en toda la granja
+ simT+=STEP;const d=new Date(simT),mm=d.getMinutes(),hh=d.getHours();
+ TANKS.forEach(k=>{
+  if(mm===0&&k.feedH.includes(hh))feed(k,simT,k.feedKg,false);
+  k.running=stepTank(k,simT,k.s,false);
+  if(mm%REC===0)record(k);});
+}
+function record(k){
+ const H=k.h,n=HIST_H*60/REC+1;H.t.push(simT);
+ if(k.offline){['DO','T','S','pH','TAN'].forEach(p=>H[p].push(null));H.aer.push(k.running?1:0);k.miss++;
+  if(k.miss===3)setLvl(k,'node',2,null);}
+ else{const s=k.s,noise={DO:.05,T:.03,S:.03,pH:.008,TAN:.01};
+  PARAMS.forEach(p=>H[p.k].push(Math.max(0,s[p.k]+gauss()*noise[p.k]*.5)));H.aer.push(k.running?1:0);
+  k.last=simT;if(k.miss>=3)setLvl(k,'node',0,null);k.miss=0;
+  k.bat=Math.max(1,k.bat-.0004);k.rssi=Math.round(k.rssiB+gauss()*2);
+  PARAMS.forEach(p=>{const v=H[p.k][H[p.k].length-1];debounce(k,p.k,p.lvl(v),v)});
+  setLvl(k,'aerF',k.fault&&(k.mode==='on'||(k.mode==='auto'&&k.aerSt&&k.aerSt.aer))?2:0,null);}
+ while(H.t.length>n){for(const a in H)if(a!=='feed')H[a].shift();}
+ while(H.feed.length&&H.feed[0]<H.t[0])H.feed.shift();
+}
+// confirma cambios de nivel: 2 lecturas para escalar, 6 (30 min) para normalizar
+function debounce(k,key,l,v){const cur=k.lvl[key]||0,pd=k.pend||(k.pend={});
+ if(l===cur){delete pd[key];return}
+ const q=pd[key]&&pd[key].l===l?pd[key].n+1:1;pd[key]={l,n:q};
+ if(q>=(l>cur?2:6)){delete pd[key];setLvl(k,key,l,v)}}
+function setLvl(k,key,l,v){const prev=k.lvl[key]||0;k.lvl[key]=l;if(l===prev)return;
+ let msg,dir='';
+ if(key==='node')msg=l?tt('nodeLost'):tt('nodeBack');
+ else if(key==='aerF'){if(!l)return;msg=tt('aerFail');}
+ else{const p=PK[key];
+  dir=(key==='DO'||(key==='pH'&&v<8)||(key==='S'&&v<34)||(key==='T'&&v<20))?tt('low'):tt('high');
+  msg=l>prev?`${tt(p.n)} ${dir}: ${fmt(v,p)}`:`${tt(p.n)} ${tt('back2')}: ${fmt(v,p)}`;}
+ if(l<prev&&l>0)return; // bajar de crítico a atención: sin ruido
+ pushAlert(k,l,key,msg,v,l===0);}
+function pushAlert(k,l,key,msg,v,info){
+ const a={id:Math.random().toString(36).slice(2),t:simT,tank:k.i,l,key,msg,ack:prefill||info||l===0};alerts.unshift(a);alerts=alerts.slice(0,80);
+ if(!prefill){if(key!=='aer')toast(a);renderAlerts();}}
+
+const fmt=(v,p)=>v==null?'—':v.toFixed(p.d)+(p.u?' '+p.u:'');
+const tfmt=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const dfmt=t=>new Date(t).toLocaleDateString(LANG==='sv'?'sv-SE':LANG==='en'?'en-GB':'es-MX',{day:'2-digit',month:'short'});
+const latest=(k,p)=>{const a=k.h[p];for(let i=a.length-1;i>=0;i--)if(a[i]!=null)return a[i];return null};
+function tankLvl(k){if(k.lvl.node)return 3;return Math.max(0,...PARAMS.map(p=>k.lvl[p.k]||0),k.lvl.aerF||0)}
+const LC=['var(--good)','var(--mid)','var(--bad)','var(--off)'],LN=()=>[tt('ok'),tt('warn'),tt('crit'),tt('offl')];
+
+function addLog(i,t,type,qty,note,auto){logs.unshift({i,t,type,qty,note,auto});logs=logs.slice(0,200);if(!prefill)renderLogs();}
+
+function forecast(k){ // 6 h deterministas desde el estado actual
+ const s=JSON.parse(JSON.stringify(k.s));s.aerSt={aer:k.aerSt?k.aerSt.aer:false};
+ const hv=heat;const ks=Object.assign({},k,{Tb:k.Tb+hv});
+ const out=[];let t=simT,min=s.DO,minT=t;
+ for(let m=1;m<=360;m++){t+=STEP;const d=new Date(t);if(d.getMinutes()===0&&k.feedH.includes(d.getHours()))s.load+=k.feedKg/(k.vol*.05);
+  stepTank(ks,t,s,true);if(m%REC===0)out.push([t,s.DO]);if(s.DO<min){min=s.DO;minT=t}}
+ return{out,min,minT};}
+
+/* ============ UI ============ */
+const $=id=>document.getElementById(id);
+function renderTanks(){
+ const lv=TANKS.map(tankLvl),c=[0,0,0,0];lv.forEach(l=>c[l]++);
+ $('summary').innerHTML=[0,1,2,3].map(i=>`<div><b style="color:${LC[i]}">${c[i]}</b><span>${LN()[i]}</span></div>`).join('');
+ $('tanks').innerHTML=TANKS.map((k,i)=>{const v=latest(k,'DO');return `<button class="tank${i===sel?' on':''}" data-i="${i}" aria-pressed="${i===sel}">
+  <i class="dot" style="background:${LC[lv[i]]}"></i><span class="nm">${k.id}</span><span class="dv">${v==null?'—':v.toFixed(1)}</span>
+  <span class="sp">${T[LANG].species[i]}</span><span class="du">${k.lvl.node?tt('offl'):'mg/L O₂'}</span></button>`}).join('');
+ $('tanks').querySelectorAll('.tank').forEach(b=>b.onclick=()=>{sel=+b.dataset.i;renderAll();});
+}
+function spark(cv,data,color){const r=cv.getBoundingClientRect(),dpr=devicePixelRatio||1;cv.width=r.width*dpr;cv.height=r.height*dpr;
+ const g=cv.getContext('2d');g.scale(dpr,dpr);const w=r.width,h=r.height,v=data.filter(x=>x!=null);if(v.length<2)return;
+ const mn=Math.min(...v),mx=Math.max(...v),rg=(mx-mn)||1;g.beginPath();let st=false;
+ data.forEach((x,i)=>{if(x==null){st=false;return}const X=i/(data.length-1)*w,Y=h-2-(x-mn)/rg*(h-4);st?g.lineTo(X,Y):g.moveTo(X,Y);st=true});
+ g.strokeStyle=color;g.lineWidth=1.4;g.stroke();}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function renderDetail(){
+ const k=TANKS[sel],l=tankLvl(k);
+ $('tName').textContent=`${k.id} · ${T[LANG].species[sel]}`;
+ $('tMeta').textContent=`${k.vol} ${tt('vol')} · ${tt('dens')} ${k.dens} · ${tt('nodeId')} ${k.node}`;
+ $('tBadge').textContent=LN()[l];$('tBadge').style.background=LC[l];
+ const n12=12;
+ $('kpis').innerHTML=PARAMS.map(p=>{const v=latest(k,p.k),a=k.h[p.k],lvl=k.lvl.node?3:(k.lvl[p.k]||0);
+  const old=a.length>n12?a[a.length-1-n12]:null,d=(v!=null&&old!=null)?v-old:null;
+  const arrow=d==null?'':Math.abs(d)<Math.pow(10,-p.d)*2?'→':d>0?'↗':'↘';
+  return `<button class="kpi${p.k===param?' on':''}" data-p="${p.k}" style="--st:${LC[lvl]}"><div class="k"><span>${tt(p.n)}</span><span class="st" style="background:${LC[lvl]}">${LN()[lvl]}</span></div>
+  <div class="v">${v==null?'—':v.toFixed(p.d)}<small>${p.u}</small></div><div class="tr">${arrow} ${d==null?'':(d>=0?'+':'')+d.toFixed(p.d)} / ${tt('last1h')}</div><canvas></canvas></button>`}).join('');
+ const SC=['--brand','--mid','--bad','--off'];
+ $('kpis').querySelectorAll('.kpi').forEach(b=>{const p=b.dataset.p,lvl=k.lvl.node?3:(k.lvl[p]||0);spark(b.querySelector('canvas'),k.h[p].slice(-72),css(SC[lvl]));
+  b.onclick=()=>{param=p;renderDetail();}});
+ $('cTitle').textContent=tt('cTitle',{p:tt(PK[param].n),t:k.id});
+ drawChart();renderCtl();renderForecast();
+}
+let fcCache=null;
+function renderForecast(){
+ const k=TANKS[sel],el=$('fc');
+ if(k.lvl.node){el.className='fc mid';el.innerHTML=`<b>${tt('fcT')}</b> · ${tt('fcOff')}`;fcCache=null;return}
+ const f=forecast(k);fcCache=f;const v=f.min.toFixed(1),h=tfmt(f.minT);
+ let cls='',msg;
+ if(f.min<4){cls='bad';const a=k.fault?tt('aFix'):(k.mode!=='on'&&k.Ka>.5)?tt('aOn'):!k.pump?tt('aPump'):tt('aOn');msg=tt('fcBad',{v,h,a})}
+ else if(f.min<5){cls='mid';msg=tt('fcMid',{v,h})}else msg=tt('fcOk',{v,h});
+ el.className='fc '+cls;el.innerHTML=`<b>${tt('fcT')}</b> · ${msg}`;}
+function renderCtl(){
+ const k=TANKS[sel];
+ $('aerMode').querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.m===k.mode);b.textContent=T[LANG].mode[b.dataset.m]});
+ const cmd=k.mode==='on'||(k.mode==='auto'&&k.aerSt&&k.aerSt.aer);
+ $('aerLamp').className='lamp'+(k.fault&&cmd?' bad':k.running?' on':'');
+ $('aerD').textContent=k.fault&&cmd?tt('aerFault'):k.mode==='auto'?tt('aerAuto'):tt('aerMan');
+ $('pump').classList.toggle('on',k.pump);$('pump').setAttribute('aria-checked',k.pump);$('pumpLamp').className='lamp'+(k.pump?' on':'');
+ $('feedD').textContent=k.feedH.length?tt('feedS',{h:k.feedH.map(h=>String(h).padStart(2,'0')+':00').join(' · ')+` · ${k.feedKg} kg`}):tt('feedNone');
+ $('feedNow').disabled=!k.feedH.length;$('feedNow').style.opacity=k.feedH.length?1:.4;
+ const ago=k.last?Math.round((simT-k.last)/60e3):null;
+ $('node').innerHTML=`<dt>${tt('nodeId')}</dt><dd>${k.node} · LoRaWAN</dd><dt>${tt('bat')}</dt><dd style="color:${k.bat<25?'var(--bad)':'inherit'}">${Math.round(k.bat)} %</dd>
+ <dt>${tt('rssi')}</dt><dd>${k.lvl.node?'—':k.rssi+' dBm'}</dd><dt>${tt('lastPkt')}</dt><dd style="color:${k.lvl.node?'var(--bad)':'inherit'}">${ago==null?'—':ago<1?tt('now'):tt('agoM',{n:ago})} · ${k.last?tfmt(k.last):''}</dd>`;}
+
+/* ---- gráfica ---- */
+const cv=$('chart'),box=$('chartbox'),tip=$('tip');let CH=null;
+function drawChart(){
+ const k=TANKS[sel],p=PK[param],H=k.h,dpr=devicePixelRatio||1,r=box.getBoundingClientRect();
+ cv.width=r.width*dpr;cv.height=r.height*dpr;const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+ const W=r.width,Hh=r.height,ml=42,mr=12,mt=14,mb=param==='DO'?40:28;
+ const n=Math.min(H.t.length,range*60/REC+1),i0=H.t.length-n;
+ const fc=param==='DO'&&fcCache&&!k.lvl.node?fcCache.out:[];
+ const t0=H.t[i0],t1=(fc.length?fc[fc.length-1][0]:H.t[H.t.length-1]);
+ let vals=H[param].slice(i0).filter(v=>v!=null).concat(fc.map(x=>x[1]));p.thr.forEach(([v])=>vals.push(v));
+ let mn=Math.min(...vals),mx=Math.max(...vals);const pad=(mx-mn)*.08||.5;mn-=pad;mx+=pad;if(param==='DO')mn=Math.max(0,mn);
+ const X=t=>ml+(t-t0)/(t1-t0)*(W-ml-mr),Y=v=>mt+(1-(v-mn)/(mx-mn))*(Hh-mt-mb);
+ const ink=css('--ink'),soft=css('--soft'),line=css('--line'),brand=css('--brand');
+ // noches
+ g.fillStyle=css('--night');let d=new Date(t0);d.setMinutes(0,0,0);
+ for(let t=d.getTime();t<t1;t+=3600e3){const h=new Date(t).getHours();if(h>=19||h<7)g.fillRect(X(Math.max(t,t0)),mt,X(Math.min(t+3600e3,t1))-X(Math.max(t,t0)),Hh-mt-mb);}
+ // grilla y ejes
+ g.font='10.5px IBM Plex Mono, monospace';g.fillStyle=soft;g.strokeStyle=line;g.lineWidth=1;g.textAlign='right';
+ const stepY=niceStep((mx-mn)/5);for(let v=Math.ceil(mn/stepY)*stepY;v<=mx;v+=stepY){g.beginPath();g.moveTo(ml,Y(v)+.5);g.lineTo(W-mr,Y(v)+.5);g.stroke();g.fillText(v.toFixed(stepY<.1?2:stepY<1?1:0),ml-6,Y(v)+3.5);}
+ g.textAlign='center';const hs=range<=6?1:range<=24?4:12;d=new Date(t0);d.setMinutes(0,0,0);
+ let lastX=-1e9;const hs2=(W<520&&range>6)?hs*2:hs;
+ for(let t=d.getTime()+3600e3;t<t1;t+=3600e3){const hh=new Date(t).getHours();if(hh%hs2)continue;const x=X(t);if(x<ml+14||x>W-mr-14||x-lastX<46)continue;lastX=x;
+  g.fillText(hh===0&&range>6?dfmt(t):tfmt(t),x,Hh-mb+14);g.beginPath();g.moveTo(x+.5,Hh-mb);g.lineTo(x+.5,Hh-mb+4);g.stroke();}
+ // umbrales
+ p.thr.forEach(([v,l])=>{if(v<mn||v>mx)return;g.setLineDash([5,4]);g.strokeStyle=l===2?css('--bad'):css('--mid');g.beginPath();g.moveTo(ml,Y(v));g.lineTo(W-mr,Y(v));g.stroke();g.setLineDash([]);});
+ // ahora
+ const xn=X(H.t[H.t.length-1]);g.strokeStyle=soft;g.setLineDash([2,3]);g.beginPath();g.moveTo(xn,mt);g.lineTo(xn,Hh-mb);g.stroke();g.setLineDash([]);
+ // serie
+ g.strokeStyle=brand;g.lineWidth=2;g.lineJoin='round';g.beginPath();let st=false;
+ for(let i=i0;i<H.t.length;i++){const v=H[param][i];if(v==null){st=false;continue}const x=X(H.t[i]),y=Y(v);st?g.lineTo(x,y):g.moveTo(x,y);st=true}g.stroke();
+ // área
+ // pronóstico
+ if(fc.length){g.setLineDash([6,4]);g.strokeStyle=brand;g.globalAlpha=.7;g.beginPath();g.moveTo(xn,Y(latest(k,'DO')));fc.forEach(([t,v])=>g.lineTo(X(t),Y(v)));g.stroke();g.setLineDash([]);g.globalAlpha=1;
+  g.fillStyle=soft;g.textAlign='left';g.fillText(tt('fcL'),Math.min(xn+6,W-mr-80),mt+10);}
+ // alimentación
+ g.fillStyle=css('--mid');H.feed.forEach(t=>{if(t<t0)return;const x=X(t);g.beginPath();g.moveTo(x-4,mt);g.lineTo(x+4,mt);g.lineTo(x,mt+7);g.fill();});
+ // tira de aireador
+ if(param==='DO'){const y=Hh-14;g.fillStyle=line;g.fillRect(ml,y,xn-ml,6);g.fillStyle=css('--good');
+  for(let i=i0+1;i<H.t.length;i++)if(H.aer[i]){g.fillRect(X(H.t[i-1]),y,X(H.t[i])-X(H.t[i-1])+.5,6)}}
+ CH={X,Y,i0,ml,mr,mt,mb,W,Hh,t0,t1};
+ $('legend').innerHTML=`<span><i style="background:${brand}"></i>${tt(p.n)}</span>`+(param==='DO'?`<span><i style="background:repeating-linear-gradient(90deg,${brand} 0 5px,transparent 5px 8px)"></i>${tt('fcL')}</span><span><i style="background:var(--good);height:6px"></i>${tt('aerOn')}</span>`:'')+
+  `<span><i style="background:var(--mid)"></i>${tt('thrW')}</span><span><i style="background:var(--bad)"></i>${tt('thrC')}</span><span><i style="background:var(--night);height:10px;border:1px solid var(--line)"></i>${tt('night')}</span><span style="color:var(--mid)">▼ <span style="color:var(--soft)">${tt('feedL')}</span></span>`;
+}
+function niceStep(x){const e=Math.pow(10,Math.floor(Math.log10(x))),f=x/e;return(f<1.5?1:f<3.5?2:f<7.5?5:10)*e}
+box.addEventListener('pointermove',e=>{if(!CH)return;const k=TANKS[sel],H=k.h,r=box.getBoundingClientRect(),x=e.clientX-r.left;
+ if(x<CH.ml||x>CH.W-CH.mr){tip.style.display='none';return}
+ const t=CH.t0+(x-CH.ml)/(CH.W-CH.ml-CH.mr)*(CH.t1-CH.t0);let txt,px,py;
+ if(t>H.t[H.t.length-1]&&fcCache&&param==='DO'){const f=fcCache.out.reduce((a,b)=>Math.abs(b[0]-t)<Math.abs(a[0]-t)?b:a);txt=`${tfmt(f[0])} · ${tt('fcL')}<br><b>${f[1].toFixed(2)} mg/L</b>`;px=CH.X(f[0]);py=CH.Y(f[1]);}
+ else{let i=Math.round((t-H.t[CH.i0])/(REC*60e3))+CH.i0;i=Math.max(CH.i0,Math.min(H.t.length-1,i));const v=H[param][i];
+  txt=`${dfmt(H.t[i])} ${tfmt(H.t[i])}<br><b>${fmt(v,PK[param])}</b>${param==='DO'&&H.aer[i]?' · '+tt('aerOn'):''}`;px=CH.X(H.t[i]);py=v==null?CH.mt+20:CH.Y(v);}
+ tip.innerHTML=txt;tip.style.display='block';const tw=tip.offsetWidth;tip.style.left=Math.min(CH.W-tw-4,Math.max(4,px+10))+'px';tip.style.top=Math.max(4,py-44)+'px';});
+box.addEventListener('pointerleave',()=>tip.style.display='none');
+
+/* ---- alertas / bitácora / toasts ---- */
+function renderAlerts(){
+ const open=alerts.filter(a=>!a.ack).length;$('alCount').hidden=!open;$('alCount').textContent=open;
+ $('alerts').innerHTML=alerts.length?alerts.slice(0,40).map(a=>`<div class="al${a.ack?' ack':''}"><i class="lv" style="background:${a.key==='aer'?'var(--brand)':LC[a.key==='node'&&a.l?3:a.l]}"></i>
+  <div><b>${TANKS[a.tank].id}</b> · ${a.msg}<div class="tm">${dfmt(a.t)} ${tfmt(a.t)}</div></div>${a.ack?'':`<button data-id="${a.id}">${tt('ack')}</button>`}</div>`).join(''):`<div class="empty">${tt('noAlerts')}</div>`;
+ $('alerts').querySelectorAll('button').forEach(b=>b.onclick=()=>{const a=alerts.find(x=>x.id===b.dataset.id);if(a)a.ack=true;renderAlerts();});}
+function renderLogs(){
+ const L=logs.filter(l=>l.i===sel).slice(0,40);
+ $('logs').innerHTML=L.length?L.map(l=>`<div class="lg"><span class="tm">${dfmt(l.t)}<br>${tfmt(l.t)}</span><span class="ty">${T[LANG].types[l.type]||l.type}${l.qty?' · '+l.qty:''}</span><span class="nt">${l.auto?tt('autoFeed'):esc(l.note||'')}</span></div>`).join(''):`<div class="empty">—</div>`;}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(a){const el=document.createElement('div');el.className='toast '+(a.l===2?'crit':a.l===0?'ok':'');
+ el.innerHTML=`<span class="ic">${a.l===2?'🚨':a.l===0?'✅':'⚠️'}</span><b>${TANKS[a.tank].id} · ${a.msg}</b><small>Marine DataLab · ${tfmt(a.t)}</small>`;
+ $('toasts').prepend(el);while($('toasts').children.length>3)$('toasts').lastChild.remove();setTimeout(()=>el.remove(),6000);}
+function note(msg){toast({l:1,tank:sel,msg,t:simT})}
+
+/* ---- controles ---- */
+$('aerMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{const k=TANKS[sel];k.mode=b.dataset.m;
+ addLog(sel,simT,3,'',`${tt('cmd')}: ${tt('aer')} → ${T[LANG].mode[k.mode]}`);renderDetail();renderLogs();});
+$('pump').onclick=()=>{const k=TANKS[sel];k.pump=!k.pump;addLog(sel,simT,3,'',`${tt('cmd')}: ${tt('pump')} → ${k.pump?T[LANG].mode.on:T[LANG].mode.off}`);renderDetail();};
+$('feedNow').onclick=()=>{const k=TANKS[sel];if(!k.feedH.length)return;feed(k,simT,k.feedKg,true);renderDetail();};
+$('logForm').onsubmit=e=>{e.preventDefault();const ty=+$('logType').value,q=$('logQty').value.trim(),n=$('logNote').value.trim();
+ if(ty===0&&TANKS[sel].feedH.length){const kg=parseFloat(q.replace(',','.'))||TANKS[sel].feedKg;TANKS[sel].s.load+=kg/(TANKS[sel].vol*.05);TANKS[sel].h.feed.push(simT);addLog(sel,simT,0,kg+' kg',n);}
+ else addLog(sel,simT,ty,q,n);$('logQty').value='';$('logNote').value='';renderDetail();};
+$('csv').onclick=()=>{const k=TANKS[sel],H=k.h;let s='timestamp,tank,DO_mgL,T_C,S_PSU,pH,TAN_mgL,aerator\n';
+ H.t.forEach((t,i)=>{s+=[new Date(t).toISOString(),k.id,...['DO','T','S','pH','TAN'].map(p=>H[p][i]==null?'':H[p][i].toFixed(3)),H.aer[i]].join(',')+'\n'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download=`mdl-${k.id}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
+$('ranges').querySelectorAll('button').forEach(b=>b.onclick=()=>{range=+b.dataset.r;$('ranges').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));drawChart();});
+const SPEEDS=[[0,'❚❚'],[1,'1×'],[60,'60×'],[600,'600×'],[3600,'3600×']];
+function renderSpeeds(){$('speeds').innerHTML=SPEEDS.map(([s,l])=>`<button class="hbtn${(s===0?paused:!paused&&s===speed)?' on':''}" data-s="${s}" style="margin-right:3px">${l}</button>`).join('');
+ $('speeds').querySelectorAll('button').forEach(b=>b.onclick=()=>{const s=+b.dataset.s;if(s===0)paused=!paused;else{speed=s;paused=false}renderSpeeds();renderClock();});}
+document.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{const k=TANKS[sel],sc=b.dataset.sc;
+ if(sc==='fault'){k.fault=true;if(k.mode==='off')k.mode='auto';note(tt('faultOn',{t:k.id}));}
+ if(sc==='heat'){heat=3;note(tt('heatOn'));}
+ if(sc==='offline'){k.offline=true;note(tt('offOn',{t:k.id}));}
+ if(sc==='reset'){heat=0;TANKS.forEach(x=>{x.fault=false;x.offline=false});setLvl(k,'aerF',0,null);toast({l:0,tank:sel,msg:tt('resetOn'),t:simT});}
+ renderAll();});
+
+function renderClock(){const d=new Date(simT);
+ $('clock').textContent=d.toLocaleDateString(LANG==='sv'?'sv-SE':LANG==='en'?'en-GB':'es-MX',{weekday:'short',day:'2-digit',month:'short'})+' · '+tfmt(simT)+(heat?' · 🌡 +3 °C':'');
+ $('live').classList.toggle('paused',paused);$('liveTxt').textContent=paused?tt('paused'):speed===1?tt('live'):`${tt('live')} · ${speed}×`;}
+function renderAll(){renderTanks();renderDetail();renderAlerts();renderLogs();renderClock();}
+
+/* ---- bucle ---- */
+let acc=0,lastTs=performance.now(),lastRec=0;
+function loop(ts){const dt=Math.min(1000,ts-lastTs);lastTs=ts;
+ if(!paused){acc+=dt*speed;let steps=0,rec=false;while(acc>=STEP&&steps<120){acc-=STEP;tick1();steps++;if(new Date(simT).getMinutes()%REC===0)rec=true}
+  if(acc>=STEP)acc=0;
+  if(rec){renderTanks();renderDetail();}
+  if(steps)renderClock();}
+ requestAnimationFrame(loop);}
+
+/* ---- idioma ---- */
+function applyLang(l){LANG=l;document.documentElement.lang=l;document.querySelectorAll('[data-i]').forEach(e=>e.textContent=tt(e.dataset.i));
+ document.title='Marine DataLab — '+tt('title');
+ $('logType').innerHTML=T[l].types.map((t,i)=>`<option value="${i}">${t}</option>`).join('');$('logQty').placeholder=tt('qty');$('logNote').placeholder=tt('note');
+ document.querySelectorAll('#langs button').forEach(b=>b.style.opacity=b.dataset.l===l?1:.55);
+ try{localStorage.setItem('mdl-lang',l)}catch(e){}
+ try{const u=new URL(location);u.searchParams.set('lang',l);history.replaceState(null,'',u)}catch(e){}
+ renderAll();}
+const LS=$('langs');['es','en','sv'].forEach(l=>{const b=document.createElement('button');b.dataset.l=l;b.textContent=l.toUpperCase();
+ b.style.cssText='font:600 11px var(--mono);background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:5px;padding:3px 7px;cursor:pointer';
+ b.onclick=()=>applyLang(l);LS.appendChild(b);});
+
+/* ---- arranque: 72 h de historia ---- */
+TANKS.forEach(k=>{k.rssiB=k.rssi;});
+const nowT=Math.floor(Date.now()/STEP)*STEP;
+// T-02: el operador dejó el aireador apagado anoche → incidente de hipoxia en la historia
+// incidente anclado a la madrugada más reciente que termine al menos 6 h antes de ahora
+const inc=new Date(nowT-6*3600e3);inc.setMinutes(0,0,0);while(inc.getHours()!==6)inc.setTime(inc.getTime()-3600e3);
+const incE=inc.getTime(),incS=incE-5*3600e3,H0=(incE-nowT)/3600e3;
+while(simT<nowT){TANKS[1].mode=(simT>=incS&&simT<incE)?'off':'auto';tick1();}
+TANKS[1].mode='auto';
+[[1,H0-5.1,3,'','Aireador apagado por mantenimiento de motor'],[1,H0,1,'','Camarones en superficie al amanecer; aireador reactivado'],[1,H0+.3,2,'35 ind.','Mortalidad asociada a hipoxia nocturna'],
+ [3,-30,4,'40 ind.','Biometría: peso medio 312 g'],[0,-26,4,'100 ind.','Biometría: peso medio 14.2 g'],[2,-20,3,'','Limpieza de filtros y tamices'],[4,-6,1,'','Nado normal, buena respuesta al alimento'],[5,-3,0,'0.2 kg','Rotíferos enriquecidos']]
+ .forEach(([i,h,ty,q,n])=>logs.push({i,t:nowT+h*3600e3,type:ty,qty:q,note:n}));
+logs.sort((a,b)=>b.t-a.t);
+prefill=false;
+applyLang(LANG);renderSpeeds();
+addEventListener('resize',()=>renderDetail());
+if(matchMedia('(prefers-color-scheme:dark)').addEventListener)matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>renderDetail());
+requestAnimationFrame(loop);
+</script>
+</body></html>
