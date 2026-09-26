@@ -889,6 +889,11 @@ footer .flogo{height:76px;width:auto;filter:var(--logo-filter)}
 "Abrir dashboard →":["Open dashboard →","Öppna dashboard →"],
 "Solicitar demo →":["Request a demo →","Be om en demo →"],
 "Alertas":["Alerts","Larm"],
+"Selección de sitios para cultivo de ostión":["Oyster farm site selection","Platsval för ostronodling"],
+"Corrientes de marea, tiempo de residencia y profundidad sobre imagen satelital de la Ensenada de La Paz, con ranking multicriterio de sitios.":["Tidal currents, residence time and depth over satellite imagery of the Ensenada de La Paz, with a multi-criteria site ranking.","Tidvattenströmmar, uppehållstid och djup över satellitbild av Ensenada de La Paz, med multikriterierangordning av platser."],
+"Satélite":["Satellite","Satellit"],
+"Hidrodinámica":["Hydrodynamics","Hydrodynamik"],
+"Multicriterio":["Multi-criteria","Multikriterie"],
 "Investigación":["Research","Forskning"],
 "Público":["Public","Publik"],
 "Desarrollado para CEDO Intercultural":["Built for CEDO Intercultural","Byggd för CEDO Intercultural"],
@@ -988,6 +993,7 @@ footer .flogo{height:76px;width:auto;filter:var(--logo-filter)}
      url: dirección pública del tablero (deja '' para mostrar "Solicitar demo"). */
   const DASHBOARDS=[
     {title:'Monitor acuícola en tiempo real',cat:'Acuicultura',desc:'Calidad de agua por estanque o jaula, alertas de hipoxia y bitácora de manejo.',stack:['IoT','LoRaWAN','Alertas'],status:'Demo',url:''},
+    {title:'Selección de sitios para cultivo de ostión',cat:'Acuicultura',desc:'Corrientes de marea, tiempo de residencia y profundidad sobre imagen satelital de la Ensenada de La Paz, con ranking multicriterio de sitios.',stack:['Satélite','Hidrodinámica','Multicriterio'],status:'Demo',url:'zona-cultivo/'},
     {title:'Rastreo de flota y trazabilidad',cat:'Pesquerías',desc:'Trayectorias de embarcaciones, viajes de pesca y fichas de origen por lote.',stack:['GNSS','VMS','QR/NFC'],status:'Demo',url:''},
     {title:'Vulnerabilidad climática costera',cat:'Clima y océano',desc:'Vulnerabilidad de comunidades costeras bajo escenarios SSP1-2.6 y SSP5-8.5.',stack:['R Shiny','SQLite'],status:'Desarrollado para CEDO Intercultural',url:''},
     {title:'Go Ocean Climate Change Portal',cat:'Clima y océano',desc:'Plataforma en la nube con herramientas oceanográficas, datos satelitales, pesqueros y un asistente de IA sobre ecología marina del Golfo de California.',stack:['Cloud','Streamlit','GraphRAG'],status:'Desarrollado para CEDO Intercultural',url:''},
@@ -1012,7 +1018,8 @@ footer .flogo{height:76px;width:auto;filter:var(--logo-filter)}
     grid.innerHTML='';
     DASHBOARDS.filter(d=>current==='Todos'||d.cat===current).forEach((d,i)=>{
       const a=document.createElement('article');a.className='dcard';
-      const link=d.url?`<a class="dlink" href="${d.url}" target="_blank" rel="noopener">${t('Abrir dashboard →')}</a>`:`<a class="dlink" href="#contacto" data-t="${t(d.title)}">${t('Solicitar demo →')}</a>`;
+      const ext=/^https?:/.test(d.url)?' target="_blank" rel="noopener"':'';
+      const link=d.url?`<a class="dlink" href="${d.url}"${ext}>${t('Abrir dashboard →')}</a>`:`<a class="dlink" href="#contacto" data-t="${t(d.title)}">${t('Solicitar demo →')}</a>`;
       a.innerHTML=`<div class="dthumb"><canvas></canvas><span class="tag">${t(d.cat)}</span></div>
         <div class="dbody"><h3>${t(d.title)}</h3><p>${t(d.desc)}</p>
         <div class="dmeta">${d.stack.map(s=>`<span>${t(s)}</span>`).join('')}<span>${t(d.status)}</span></div>${link}</div>`;
